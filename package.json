@@ -1,0 +1,17 @@
+{
+  "name": "v380-cctv-system",
+  "version": "1.0.0",
+  "description": "V380 CCTV Management and Recording System",
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "seed": "cd backend && npm run seed",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "start:backend": "cd backend && npm start",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "keywords": ["cctv", "v380", "recording", "surveillance", "mern"],
+  "author": "V380 CCTV System"
+}

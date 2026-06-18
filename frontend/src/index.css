@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-900 text-gray-100 font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-dark-800; }
+  ::-webkit-scrollbar-thumb { @apply bg-dark-400 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-dark-400; }
+}
+
+@layer components {
+  .card {
+    @apply bg-dark-700 border border-dark-500 rounded-xl;
+  }
+
+  .btn-primary {
+    @apply bg-accent-blue hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-600 hover:bg-dark-500 text-gray-200 font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border border-dark-400;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2;
+  }
+
+  .input-field {
+    @apply bg-dark-600 border border-dark-400 text-gray-100 rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent placeholder-gray-500 transition-all;
+  }
+
+  .label {
+    @apply text-sm font-medium text-gray-300 mb-1.5 block;
+  }
+
+  .badge-online {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30;
+  }
+
+  .badge-offline {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .badge-recording {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-600 transition-all duration-200 text-sm font-medium;
+  }
+
+  .sidebar-link.active {
+    @apply bg-accent-blue/10 text-accent-blue border border-accent-blue/20;
+  }
+
+  .table-row {
+    @apply border-b border-dark-500 hover:bg-dark-600/50 transition-colors;
+  }
+}
+
+/* Live recording pulse animation */
+@keyframes recordPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.recording-indicator {
+  animation: recordPulse 1.5s ease-in-out infinite;
+}
+
+/* Camera grid */
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+/* Video player */
+video::-webkit-media-controls-panel {
+  background-color: rgba(15, 22, 41, 0.95);
+}

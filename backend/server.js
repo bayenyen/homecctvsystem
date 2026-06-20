@@ -80,6 +80,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ─── Frontend Static Files (Production) ───────────────────────────────────────
+// Serve frontend build files (when deployed)
+const frontendBuildPath = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath));
+  // SPA routing: serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+}
+
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   logger.error(`${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);

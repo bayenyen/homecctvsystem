@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: 5000
       - key: FFMPEG_PATH
         value: ffmpeg
       - key: ENABLE_LAN_DISCOVERY

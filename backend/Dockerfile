@@ -1,3 +1,12 @@
+# Stage 1: Build frontend
+FROM node:20-bookworm-slim as frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Backend with frontend files
 FROM node:20-bookworm-slim
 
 RUN apt-get update \
@@ -10,6 +19,9 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY . .
+
+# Copy frontend build from stage 1
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 ENV NODE_ENV=production
 ENV PORT=10000

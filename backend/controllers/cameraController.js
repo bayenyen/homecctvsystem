@@ -395,60 +395,75 @@ const streamCameraLive = async (req, res) => {
 
     const liveProfiles = {
       grid: {
-        fps: '10',
-        scale: '640:-2',
-        videoBitrate: '600k',
-        maxrate: '800k',
-        bufsize: '1200k'
+        fps: '12',
+        scale: '480:-2',
+        videoBitrate: '300k',
+        maxrate: '400k',
+        bufsize: '600k',
+        preset: 'ultrafast'
       },
       main: {
-        fps: '15',
-        scale: '1280:-2',
-        videoBitrate: '1500k',
-        maxrate: '2000k',
-        bufsize: '3000k'
+        fps: '20',
+        scale: '1024:-2',
+        videoBitrate: '800k',
+        maxrate: '1200k',
+        bufsize: '1800k',
+        preset: 'superfast'
       }
     };
     const profile = liveProfiles[quality];
     
-    // Optimized FFmpeg args for stable streaming with multiple cameras
-    // TCP transport for reliability, higher timeout for slow/low-FPS cameras
+    // Optimized FFmpeg args for stable streaming with multiple cameras (9+ support)
+    // TCP transport for reliability, force keyframes every 2 seconds for faster startup
     const ffmpegArgs = [
       '-rtsp_transport', 'tcp',
-      '-timeout', '10000000',      // 10 seconds - increased for more stable connections
+      '-timeout', '5000000',        // 5 seconds - faster timeout for quick recovery
       '-i', streamUrl,
-      '-c:v', 'copy',              // H.264 copy - no re-encoding
-      '-c:a', 'none',              // No audio
+      '-c:v', 'libx264',            // Re-encode for quality control + adaptive bitrate
+      '-preset', profile.preset,    // Fast encoding: ultrafast/superfast
+      '-c:a', 'none',               // No audio
       '-an',
+      '-vf', `scale=${profile.scale}`,  // Apply scaling for grid/main quality
+      '-r', profile.fps,                 // Frame rate
+      '-b:v', profile.videoBitrate,     // Bitrate
+      '-maxrate', profile.maxrate,      // Max bitrate
+      '-bufsize', profile.bufsize,      // Buffer size
+      '-g', '24',                        // Keyframe interval (2s at 12/20fps) - CRITICAL for fast startup
       '-f', 'mp4',
       '-movflags', 'frag_keyframe+empty_moov+faststart',
-      '-fflags', '+discardcorrupt', // Discard corrupted packets
+      '-fflags', '+discardcorrupt+igndts',
       'pipe:1'
     ];
 
     logger.debug(`[LIVE STREAM] FFmpeg args: ${ffmpegArgs.join(' ')}`);
 
     res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
 
     const ffmpegProcess = spawn(ffmpegPath, ffmpegArgs, { 
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 60000  // Kill process if it hangs for 60 seconds
     });
 
     let stderrBuffer = '';
     let firstDataReceived = false;
+    let frameCount = 0;
+    const startTime = Date.now();
 
     ffmpegProcess.stderr.on('data', (chunk) => {
       const message = chunk.toString();
       stderrBuffer += message;
-      logger.debug(`[LIVE STREAM] FFmpeg stderr [${camera.name}]: ${message.trim()}`);
+      if (stderrBuffer.length > 5000) stderrBuffer = stderrBuffer.slice(-2500);
       
       // Log when actual streaming starts
       if (!firstDataReceived && message.includes('frame=')) {
         firstDataReceived = true;
-        logger.info(`[LIVE STREAM] Streaming started for ${camera.name}`);
+        logger.info(`[LIVE STREAM] Video encoding started for ${camera.name} after ${Date.now() - startTime}ms`);
       }
     });
 
@@ -465,21 +480,29 @@ const streamCameraLive = async (req, res) => {
     ffmpegProcess.stdout.on('data', (chunk) => {
       if (!firstDataReceived && chunk.length > 0) {
         firstDataReceived = true;
-        logger.info(`[LIVE STREAM] Video data flowing for ${camera.name}, size: ${chunk.length} bytes`);
+        frameCount++;
+        logger.info(`[LIVE STREAM] First frame data for ${camera.name} (${chunk.length} bytes) after ${Date.now() - startTime}ms`);
+      } else if (firstDataReceived) {
+        frameCount++;
       }
     });
 
     ffmpegProcess.on('exit', (code, signal) => {
-      logger.info(`[LIVE STREAM] FFmpeg exited for ${camera.name}: code=${code} signal=${signal}`);
+      logger.info(`[LIVE STREAM] FFmpeg exited for ${camera.name}: code=${code} signal=${signal} (streamed ${frameCount} chunks in ${Date.now() - startTime}ms)`);
       if (!res.writableEnded) {
         res.end();
       }
     });
 
     res.on('close', () => {
-      logger.info(`[LIVE STREAM] Client closed connection for ${camera.name}`);
+      logger.info(`[LIVE STREAM] Client disconnected from ${camera.name} after ${Date.now() - startTime}ms`);
       if (!ffmpegProcess.killed) {
         ffmpegProcess.kill('SIGTERM');
+        setTimeout(() => {
+          if (!ffmpegProcess.killed) {
+            ffmpegProcess.kill('SIGKILL');
+          }
+        }, 5000);
       }
     });
 

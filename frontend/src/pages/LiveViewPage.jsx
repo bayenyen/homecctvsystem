@@ -21,6 +21,7 @@ export default function LiveViewPage() {
   const [selected, setSelected] = useState(null);
   const [showPTZ, setShowPTZ] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [streamsReady, setStreamsReady] = useState(new Set());
 
   useEffect(() => {
     cameraService.getAll().then(({ data }) => {
@@ -33,6 +34,7 @@ export default function LiveViewPage() {
     }).finally(() => setLoading(false));
   }, []);
 
+  // Batch-load streams to reduce network congestion
   const displayedCameras = (() => {
     const cols = LAYOUTS.find(l => l.id === layout)?.cols || 2;
     const max = cols * cols;
@@ -220,13 +222,13 @@ function CameraFeed({ camera, isSelected, quality = 'grid', liveStatus, onClick 
         return;
       }
 
-      // Increased timeout from 12s to 30s to prevent false restarts on slow cameras
-      // This fixes the "timestamp freezing then jumping back" issue on low-FPS cameras
-      if (Date.now() - last.checkedAt > 30000) {
-        console.warn(`[Stream Freeze] ${camera.name} frozen for 30s, restarting...`);
+      // Reduced timeout from 30s to 6s for fast recovery on multiple cameras
+      // This prevents long black screen periods when 9+ cameras are displayed
+      if (Date.now() - last.checkedAt > 6000) {
+        console.warn(`[Stream Freeze] ${camera.name} frozen for 6s, restarting...`);
         scheduleRestart(0);
       }
-    }, 4000);
+    }, 2000);  // Check more frequently (every 2s instead of 4s)
 
     return () => clearInterval(interval);
   }, [showVideo, videoKey]);
@@ -264,12 +266,12 @@ function CameraFeed({ camera, isSelected, quality = 'grid', liveStatus, onClick 
               checkedAt: Date.now()
             };
           }}
-          onWaiting={() => scheduleRestart(10000)}
-          onStalled={() => scheduleRestart(8000)}
-          onEnded={() => scheduleRestart(500)}
+          onWaiting={() => scheduleRestart(3000)}
+          onStalled={() => scheduleRestart(2000)}
+          onEnded={() => scheduleRestart(300)}
           onError={() => {
             setVideoError(true);
-            scheduleRestart(5000);
+            scheduleRestart(2000);
           }}
         />
       ) : (

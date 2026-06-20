@@ -3,7 +3,6 @@ services:
     name: v380-cctv-backend
     runtime: docker
     rootDir: .
-    dockerfilePath: backend/Dockerfile
     plan: starter
     healthCheckPath: /api/health
     envVars:
